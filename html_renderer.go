@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/russross/blackfriday"
+	"regexp"
 )
 
 func HtmlRenderer(d *Document) *customHtmlRenderer {
@@ -20,13 +21,6 @@ type customHtmlRenderer struct {
 	blackfriday.Renderer
 	SeenHeader bool
 }
-
-/*
-<h2 id="NAME">NAME</h2>
-<p class="man-name">
-  <code>simple</code> - <span class="man-whatis">a simple ron example</span>
-</p>
-*/
 
 func (r *customHtmlRenderer) Header(out *bytes.Buffer, text func() bool, level int, id string) {
 	if level != 1 {
@@ -63,7 +57,7 @@ func (r *customHtmlRenderer) SubHeader(out *bytes.Buffer, text func() bool, leve
 	})
 
 	out.WriteString("\n")
-	out.WriteString(fmt.Sprintf(`<h%d id="%s">%s</h%d>`, level, extra, extra, level))
+	out.WriteString(fmt.Sprintf(`<h%d id="%s">%s</h%d>`, level, anchorName(extra), extra, level))
 	out.WriteString("\n")
 }
 
@@ -87,3 +81,11 @@ func (r *customHtmlRenderer) getText(out *bytes.Buffer, text func() bool, cb fun
 	out.Write(current)
 	return string(extra)
 }
+
+func anchorName(name string) string {
+	return anchorNameRE.ReplaceAllString(name, "-")
+}
+
+var (
+	anchorNameRE = regexp.MustCompile(`\W+`)
+)
