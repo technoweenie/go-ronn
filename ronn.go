@@ -3,11 +3,29 @@ package ronn
 import (
   "github.com/russross/blackfriday"
   "regexp"
+  "bytes"
 )
 
-func HTML(input []byte) string {
-  output := string(Render(HtmlRenderer(), input))
-  return `<div class="mp">` + "\n" + output + "\n</div>\n"
+type Document struct {
+  PageName string
+  Name string
+  Section string
+  Tagline string
+}
+
+func HTML(d *Document, input []byte) string {
+  renderer := HtmlRenderer(d)
+  output := Render(renderer, input)
+  buf := bytes.NewBufferString(`<div class="mp">`)
+  buf.WriteString("\n")
+
+  if !renderer.SeenHeader {
+    renderer.ManHeader(buf, d.PageName, "", "")
+  }
+
+  buf.Write(output)
+  buf.WriteString("\n</div>\n")
+  return buf.String()
 }
 
 func Render(renderer blackfriday.Renderer, input []byte) []byte {

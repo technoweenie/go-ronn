@@ -6,17 +6,19 @@ import (
   "fmt"
 )
 
-func HtmlRenderer() blackfriday.Renderer {
+func HtmlRenderer(d *Document) *customHtmlRenderer {
   htmlFlags := 0
   htmlFlags |= blackfriday.HTML_USE_XHTML
   return &customHtmlRenderer{
+    Doc: d,
     Renderer: blackfriday.HtmlRenderer(htmlFlags, "", ""),
   }
 }
 
 type customHtmlRenderer struct {
+  Doc *Document
   blackfriday.Renderer
-  seenHeader bool
+  SeenHeader bool
 }
 
 /*
@@ -27,7 +29,7 @@ type customHtmlRenderer struct {
 */
 
 func (r *customHtmlRenderer) Header(out *bytes.Buffer, text func() bool, level int, id string) {
-  if level != 1 || r.seenHeader {
+  if level != 1 || r.SeenHeader {
     r.Renderer.Header(out, text, level, id)
     return
   }
@@ -37,22 +39,31 @@ func (r *customHtmlRenderer) Header(out *bytes.Buffer, text func() bool, level i
   r.Renderer.Header(&bytes.Buffer{}, text, level, id)
 
   extra := out.Bytes()[len(current):]
-  name, section, desc := SniffHeader(string(extra))
+  name, section, tagline := SniffHeader(string(extra))
+  r.Doc.Name = name
+  r.Doc.Section = section
+  r.Doc.Tagline = tagline
 
   out.Reset()
   out.Write(current)
 
   if len(name) + len(section) > 0 {
-    out.WriteString(`<h2 id="NAME">NAME</h2>`)
-    out.WriteString("\n")
-    out.WriteString(`<p class="man-name">`)
-    out.WriteString("\n")
-    out.WriteString(fmt.Sprintf(`  <code>%s</code> - <span class="man-whatis">%s</span>`, name, desc))
-    out.WriteString("\n")
-    out.WriteString("</p>\n")
+    r.ManHeader(out, name, section, tagline)
   } else {
     r.Renderer.Header(out, text, level, id)
   }
 
-  r.seenHeader = true
+  r.SeenHeader = true
+}
+
+func (r *customHtmlRenderer) ManHeader(out *bytes.Buffer, name, section, tagline string) {
+  out.WriteString(`<h2 id="NAME">NAME</h2>`)
+  out.WriteString("\n")
+  out.WriteString(`<p class="man-name">`)
+  out.WriteString(fmt.Sprintf("\n  <code>%s</code>", name))
+  if len(tagline) > 0 {
+    out.WriteString(fmt.Sprintf(` - <span class="man-whatis">%s</span>`, tagline))
+  }
+  out.WriteString("\n")
+  out.WriteString("</p>\n")
 }

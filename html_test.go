@@ -8,8 +8,10 @@ import (
 
 func TestHTML(t *testing.T) {
   files := []string{
-    "custom_title_document",
     "basic_document",
+    "custom_title_document",
+    "entity_encoding_test",
+    "titleless_document",
   }
 
   for _, file := range files {
@@ -32,7 +34,9 @@ func testHTML(t *testing.T, file string) {
     t.Fatalf("Unable to read %s: %s", ronn, err)
   }
 
-  actual := HTML(input)
+  doc := &Document{PageName: file}
+
+  actual := HTML(doc, input)
   if actual != expected {
     t.Errorf("%s output does not match", file)
     fmt.Println(file)
