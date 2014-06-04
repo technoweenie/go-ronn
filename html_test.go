@@ -11,6 +11,7 @@ func TestHTML(t *testing.T) {
     "basic_document",
     "custom_title_document",
     "entity_encoding_test",
+    "middle_paragraph",
     "titleless_document",
   }
 

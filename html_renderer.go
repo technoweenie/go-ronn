@@ -29,23 +29,24 @@ type customHtmlRenderer struct {
 */
 
 func (r *customHtmlRenderer) Header(out *bytes.Buffer, text func() bool, level int, id string) {
-  if level != 1 || r.SeenHeader {
+  if level != 1 {
+    r.SubHeader(out, text, level, id)
+    return
+  }
+
+  if r.SeenHeader {
     r.Renderer.Header(out, text, level, id)
     return
   }
 
-  current := out.Bytes()
+  extra := r.getText(out, text, func() {
+    r.Renderer.Header(&bytes.Buffer{}, text, level, id)
+  })
 
-  r.Renderer.Header(&bytes.Buffer{}, text, level, id)
-
-  extra := out.Bytes()[len(current):]
-  name, section, tagline := SniffHeader(string(extra))
+  name, section, tagline := SniffHeader(extra)
   r.Doc.Name = name
   r.Doc.Section = section
   r.Doc.Tagline = tagline
-
-  out.Reset()
-  out.Write(current)
 
   if len(name) + len(section) > 0 {
     r.ManHeader(out, name, section, tagline)
@@ -54,6 +55,16 @@ func (r *customHtmlRenderer) Header(out *bytes.Buffer, text func() bool, level i
   }
 
   r.SeenHeader = true
+}
+
+func (r *customHtmlRenderer) SubHeader(out *bytes.Buffer, text func() bool, level int, id string) {
+  extra := r.getText(out, text, func() {
+    r.Renderer.Header(&bytes.Buffer{}, text, level, id)
+  })
+
+  out.WriteString("\n")
+  out.WriteString(fmt.Sprintf(`<h%d id="%s">%s</h%d>`, level, extra, extra, level))
+  out.WriteString("\n")
 }
 
 func (r *customHtmlRenderer) ManHeader(out *bytes.Buffer, name, section, tagline string) {
@@ -66,4 +77,13 @@ func (r *customHtmlRenderer) ManHeader(out *bytes.Buffer, name, section, tagline
   }
   out.WriteString("\n")
   out.WriteString("</p>\n")
+}
+
+func (r *customHtmlRenderer) getText(out *bytes.Buffer, text func() bool, cb func()) string {
+  current := out.Bytes()
+  cb()
+  extra := out.Bytes()[len(current):]
+  out.Reset()
+  out.Write(current)
+  return string(extra)
 }
